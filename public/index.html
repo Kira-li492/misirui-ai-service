@@ -328,6 +328,13 @@
       const product = detectProduct(text);
       if (product) { selectedProduct = product.name; addProductCard(product); }
 
+      // 尝试自动提取联系方式
+      fetch('/extract-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, lang })
+      }).catch(() => {});
+
       // 检测Sophia是否在要求联系方式，若是则显示引导按钮
       const replyLower = data.reply.toLowerCase();
       const askingContact = lang === 'zh'
