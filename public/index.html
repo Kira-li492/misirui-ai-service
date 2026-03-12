@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>MISIRUI Customer Service</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0ece6; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #chat-box { width: 420px; height: 680px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
+    #header { background: #1a1a1a; color: white; padding: 18px 20px; display: flex; align-items: center; gap: 10px; }
+    #header .dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; margin-left: auto; }
+    #header .title { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+    #header .sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+    #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 85%; padding: 12px 16px; border-radius: 18px; line-height: 1.6; font-size: 14px; }
+    .user { background: #1a1a1a; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .ai { background: #f5f5f5; color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
+    .quick-btn { padding: 8px 16px; border: 1.5px solid #1a1a1a; background: white; color: #1a1a1a; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s ease; }
+    .quick-btn:hover { background: #1a1a1a; color: white; transform: translateY(-1px); }
+    .product-card { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 14px; align-self: flex-start; max-width: 85%; cursor: pointer; transition: all 0.2s ease; }
+    .product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .product-card .cat { font-size: 11px; color: #999; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+    .product-card .name { font-size: 14px; font-weight: bold; color: #1a1a1a; margin-bottom: 6px; }
+    .product-card .desc { font-size: 12px; color: #666; line-height: 1.5; }
+    .product-card .link { font-size: 12px; color: #1a1a1a; margin-top: 8px; text-decoration: underline; }
+    /* 联系方式卡片 */
+    .contact-card { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 16px; align-self: flex-start; width: 90%; }
+    .contact-card .form-title { font-size: 13px; font-weight: bold; color: #1a1a1a; margin-bottom: 12px; }
+    .channel-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .channel-btn { padding: 7px 14px; border: 1.5px solid #ddd; background: white; color: #555; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .channel-btn.selected { border-color: #1a1a1a; background: #1a1a1a; color: white; }
+    .channel-btn:hover:not(.selected) { border-color: #999; }
+    .contact-input-wrap { display: none; flex-direction: column; gap: 8px; }
+    .contact-input-wrap.visible { display: flex; }
+    .contact-card input { width: 100%; padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; transition: border 0.2s; }
+    .contact-card input:focus { border-color: #1a1a1a; }
+    .contact-card .submit-btn { padding: 10px; background: #1a1a1a; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
+    .contact-card .submit-btn:hover { background: #333; }
+    .success-msg { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 12px; padding: 12px 16px; align-self: flex-start; max-width: 90%; font-size: 13px; color: #2e7d32; line-height: 1.6; }
+    #bottom { display: flex; flex-direction: column; border-top: 1px solid #eee; }
+    #quick-guide { padding: 12px 14px 0; display: flex; flex-direction: column; gap: 8px; }
+    #quick-guide .guide-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #quick-guide .guide-prefix { font-size: 12px; color: #aaa; white-space: nowrap; }
+    #input-area { display: flex; padding: 12px 14px 14px; gap: 8px; }
+    #input { flex: 1; padding: 10px 16px; border: 1.5px solid #1a1a1a; border-radius: 24px; outline: none; font-size: 14px; box-shadow: 0 0 0 3px rgba(26,26,26,0.08); transition: box-shadow 0.2s; }
+    #input:focus { box-shadow: 0 0 0 4px rgba(26,26,26,0.18); }
+    #send { padding: 10px 20px; background: #1a1a1a; color: white; border: none; border-radius: 24px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+    #send:hover { background: #333; }
+    .typing { display: flex; gap: 4px; align-items: center; padding: 12px 16px; background: #f5f5f5; border-radius: 18px; border-bottom-left-radius: 4px; align-self: flex-start; }
+    .typing span { width: 6px; height: 6px; background: #999; border-radius: 50%; animation: bounce 1s infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+  </style>
+</head>
+<body>
+  <div id="chat-box">
+    <div id="header">
+      <div>
+        <div class="title">MISIRUI · Sophia</div>
+        <div class="sub" id="header-sub"></div>
+      </div>
+      <div class="dot"></div>
+    </div>
+    <div id="messages"></div>
+    <div id="bottom">
+      <div id="quick-guide"></div>
+      <div id="input-area">
+        <input id="input" type="text" />
+        <button id="send"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    const lang = browserLang.startsWith('zh') ? 'zh' : 'en';
+
+    const T = {
+      zh: {
+        headerSub: 'AI 客服 · 在线',
+        welcome: '您好！我是Sophia，任何关于家具的问题都可以询问我！请问有什么能帮到您的？',
+        guideOrder: '我想订一批…',
+        guideScene: '使用场景…',
+        products: ['餐椅','吧椅','沙发','餐桌','酒店家具'],
+        productMsgs: ['我想订一批餐椅','我想订一批吧椅','我想订一批沙发','我想订一批餐桌','我想订一批酒店家具'],
+        scenes: ['酒店','餐厅','学校','居家','办公室'],
+        sceneMsgs: ['我的使用场景是酒店','我的使用场景是餐厅','我的使用场景是学校','我的使用场景是居家','我的使用场景是办公室'],
+        exploreLabel: '继续探索…',
+        exploreDesigner: '✦ 明星设计师合作案例',
+        exploreProducts: '✦ 探索全系产品',
+        contactTitle: '请选择您希望我们联系您的方式',
+        contactChannels: ['微信','手机号','邮箱','WhatsApp','Telegram','其他'],
+        contactPlaceholder: { '微信':'微信号', '手机号':'手机号码', '邮箱':'邮箱地址', 'WhatsApp':'WhatsApp号码', 'Telegram':'Telegram用户名', '其他':'联系方式' },
+        contactSubmit: '提交',
+        contactNamePlaceholder: '您的姓名（选填）',
+        contactAlert: '请先选择联系方式并填写',
+        successMsg: (channel, val) => `已记录您的${channel}：${val}，专员会尽快与您联系，欢迎继续咨询！`,
+        placeholder: '有任何问题都可以直接问我 ✦',
+        send: '发送',
+        viewProduct: '查看产品详情 →',
+      },
+      en: {
+        headerSub: 'AI Assistant · Online',
+        welcome: "Hi! I'm Sophia. Feel free to ask me anything about our furniture! How can I help you today?",
+        guideOrder: "I'm looking for…",
+        guideScene: 'Use case…',
+        products: ['Dining Chairs','Bar Stools','Sofas','Dining Tables','Hotel Furniture'],
+        productMsgs: ["I'm looking for dining chairs","I'm looking for bar stools","I'm looking for sofas","I'm looking for dining tables","I'm looking for hotel furniture"],
+        scenes: ['Hotel','Restaurant','School','Home','Office'],
+        sceneMsgs: ['My use case is hotel','My use case is restaurant','My use case is school','My use case is home','My use case is office'],
+        exploreLabel: 'Keep exploring…',
+        exploreDesigner: '✦ Designer Collaborations',
+        exploreProducts: '✦ Browse All Products',
+        contactTitle: 'How would you like us to reach you?',
+        contactChannels: ['WeChat','Phone','Email','WhatsApp','Telegram','Other'],
+        contactPlaceholder: { 'WeChat':'WeChat ID', 'Phone':'Phone number', 'Email':'Email address', 'WhatsApp':'WhatsApp number', 'Telegram':'Telegram username', 'Other':'Contact info' },
+        contactSubmit: 'Submit',
+        contactNamePlaceholder: 'Your name (optional)',
+        contactAlert: 'Please select a channel and enter your contact info',
+        successMsg: (channel, val) => `Got it! We've noted your ${channel}: ${val}. Our team will reach out soon — feel free to keep chatting!`,
+        placeholder: 'Ask me anything ✦',
+        send: 'Send',
+        viewProduct: 'View product details →',
+      }
+    };
+
+    const t = T[lang];
+
+    const PRODUCTS = lang === 'zh' ? [
+      { name: '吧台椅 / 高脚凳', cat: '酒吧家具', desc: '实木、金属、真皮、马鞍皮可选', url: 'https://www.misiruifurniture.com/products/bar-counter-stools' },
+      { name: '餐椅', cat: '餐厅家具', desc: '皮革、布艺、实木、金属、旋转款', url: 'https://www.misiruifurniture.com/products/dining-room-chair' },
+      { name: '餐桌', cat: '餐厅家具', desc: '实木、木皮贴面', url: 'https://www.misiruifurniture.com/products/dining-tables' },
+      { name: '沙发', cat: '客厅家具', desc: '布艺、真皮、模块化、实木框架', url: 'https://www.misiruifurniture.com/products/living-room-sofas' },
+      { name: '休闲椅 / 躺椅', cat: '客厅家具', desc: '真皮、布艺，支持定制', url: 'https://www.misiruifurniture.com/products/living-room-recliners' },
+      { name: '茶几', cat: '客厅家具', desc: '实木、金属、玻璃、大理石', url: 'https://www.misiruifurniture.com/products/living-room-coffee-tables' },
+      { name: '酒店商务椅', cat: '酒店家具', desc: '商务休闲，适合酒店大堂', url: 'https://www.misiruifurniture.com/products/hotel-furniture' },
+      { name: '户外冥想椅', cat: '户外家具', desc: '冥想座椅，户外专用', url: 'https://www.misiruifurniture.com/products/outdoor-furniture' },
+    ] : [
+      { name: 'Bar Stools / Counter Stools', cat: 'Bar Furniture', desc: 'Solid wood, metal, genuine leather, saddle leather', url: 'https://www.misiruifurniture.com/products/bar-counter-stools' },
+      { name: 'Dining Chairs', cat: 'Dining Room', desc: 'Leather, fabric, solid wood, metal, swivel', url: 'https://www.misiruifurniture.com/products/dining-room-chair' },
+      { name: 'Dining Tables', cat: 'Dining Room', desc: 'Solid wood, wood veneer', url: 'https://www.misiruifurniture.com/products/dining-tables' },
+      { name: 'Sofas', cat: 'Living Room', desc: 'Fabric, genuine leather, modular, solid wood frame', url: 'https://www.misiruifurniture.com/products/living-room-sofas' },
+      { name: 'Recliners / Armchairs', cat: 'Living Room', desc: 'Genuine leather, fabric, customizable', url: 'https://www.misiruifurniture.com/products/living-room-recliners' },
+      { name: 'Coffee Tables', cat: 'Living Room', desc: 'Solid wood, metal, glass, marble', url: 'https://www.misiruifurniture.com/products/living-room-coffee-tables' },
+      { name: 'Hotel Lounge Chairs', cat: 'Hotel Furniture', desc: 'Business lounge style, ideal for hotel lobbies', url: 'https://www.misiruifurniture.com/products/hotel-furniture' },
+      { name: 'Outdoor Meditation Chairs', cat: 'Outdoor Furniture', desc: 'Meditation seats for outdoor use', url: 'https://www.misiruifurniture.com/products/outdoor-furniture' },
+    ];
+
+    const KEYWORDS = lang === 'zh'
+      ? { '吧': 0, '高脚': 0, '吧台': 0, '吧椅': 0, '餐椅': 1, '椅子': 1, '餐桌': 2, '桌子': 2, '沙发': 3, '躺椅': 4, '休闲椅': 4, '扶手椅': 4, '茶几': 5, '咖啡桌': 5, '酒店': 6, '户外': 7, '冥想': 7 }
+      : { 'bar stool': 0, 'bar chair': 0, 'counter stool': 0, 'dining chair': 1, 'dining table': 2, 'sofa': 3, 'couch': 3, 'recliner': 4, 'armchair': 4, 'coffee table': 5, 'hotel': 6, 'outdoor': 7, 'meditation': 7 };
+
+    document.getElementById('header-sub').textContent = t.headerSub;
+    document.getElementById('input').placeholder = t.placeholder;
+    document.getElementById('send').textContent = t.send;
+
+    const messages = [];
+    const messagesDiv = document.getElementById('messages');
+    const input = document.getElementById('input');
+    let selectedProduct = '';
+    let selectedScene = '';
+    let contactFormShown = false;
+
+    function scroll() { messagesDiv.scrollTop = messagesDiv.scrollHeight; }
+
+    function addMsg(text, role) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.textContent = text;
+      messagesDiv.appendChild(div);
+      scroll();
+    }
+
+    function addProductCard(product) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.innerHTML = `<div class="cat">${product.cat}</div><div class="name">${product.name}</div><div class="desc">${product.desc}</div><div class="link">${t.viewProduct}</div>`;
+      card.onclick = () => window.open(product.url, '_blank');
+      messagesDiv.appendChild(card);
+      scroll();
+    }
+
+    function detectProduct(text) {
+      const lower = text.toLowerCase();
+      for (const [kw, idx] of Object.entries(KEYWORDS)) {
+        if (lower.includes(kw)) return PRODUCTS[idx];
+      }
+      return null;
+    }
+
+    function showContactForm() {
+      if (contactFormShown) return;
+      contactFormShown = true;
+
+      const card = document.createElement('div');
+      card.className = 'contact-card';
+
+      let selectedChannel = '';
+
+      card.innerHTML = `
+        <div class="form-title">${t.contactTitle}</div>
+        <div class="channel-row">
+          ${t.contactChannels.map(ch => `<button class="channel-btn" data-ch="${ch}">${ch}</button>`).join('')}
+        </div>
+        <div class="contact-input-wrap" id="contact-input-wrap">
+          <input id="cf-name" type="text" placeholder="${t.contactNamePlaceholder}" />
+          <input id="cf-contact" type="text" placeholder="" />
+          <button class="submit-btn" id="cf-submit">${t.contactSubmit}</button>
+        </div>
+      `;
+
+      messagesDiv.appendChild(card);
+      scroll();
+
+      // 渠道选择
+      card.querySelectorAll('.channel-btn').forEach(btn => {
+        btn.onclick = () => {
+          card.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedChannel = btn.dataset.ch;
+          const wrap = card.querySelector('#contact-input-wrap');
+          const inp = card.querySelector('#cf-contact');
+          inp.placeholder = t.contactPlaceholder[selectedChannel] || selectedChannel;
+          wrap.classList.add('visible');
+          inp.focus();
+        };
+      });
+
+      // 提交
+      card.querySelector('#cf-submit').onclick = async () => {
+        const nameVal = card.querySelector('#cf-name').value.trim();
+        const contactVal = card.querySelector('#cf-contact').value.trim();
+        if (!selectedChannel || !contactVal) { alert(t.contactAlert); return; }
+
+        const summary = messages.map(m => `${m.role === 'user' ? (lang === 'zh' ? '客户' : 'Client') : 'Sophia'}: ${m.content}`).join('\n');
+        await fetch('/save-lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: nameVal || (lang === 'zh' ? '未留名' : 'Anonymous'), contact: contactVal, contactType: selectedChannel, product: selectedProduct, scene: selectedScene, summary, lang })
+        });
+
+        card.remove();
+        const success = document.createElement('div');
+        success.className = 'success-msg';
+        success.textContent = t.successMsg(selectedChannel, contactVal);
+        messagesDiv.appendChild(success);
+        scroll();
+      };
+    }
+
+    function showExploreButtons() {
+      const guide = document.getElementById('quick-guide');
+      guide.innerHTML = `
+        <div class="guide-row">
+          <span class="guide-prefix">${t.exploreLabel}</span>
+          <button class="quick-btn" onclick="window.open('https://www.misiruifurniture.com/designer/', '_blank')">${t.exploreDesigner}</button>
+          <button class="quick-btn" onclick="window.open('https://www.misiruifurniture.com/products/', '_blank')">${t.exploreProducts}</button>
+        </div>
+      `;
+    }
+
+    function buildGuide() {
+      window._pMsgs = t.productMsgs;
+      window._sMsgs = t.sceneMsgs;
+      window._sLabels = t.scenes;
+      const guide = document.getElementById('quick-guide');
+      guide.innerHTML = `
+        <div class="guide-row">
+          <span class="guide-prefix">${t.guideOrder}</span>
+          ${t.products.map((p, i) => `<button class="quick-btn" onclick="quickSend(window._pMsgs[${i}])">${p}</button>`).join('')}
+        </div>
+        <div class="guide-row">
+          <span class="guide-prefix">${t.guideScene}</span>
+          ${t.scenes.map((s, i) => `<button class="quick-btn" onclick="quickScene(window._sMsgs[${i}], window._sLabels[${i}])">${s}</button>`).join('')}
+        </div>
+      `;
+    }
+
+    function quickScene(msg, scene) {
+      selectedScene = scene;
+      input.value = msg;
+      sendMessage();
+    }
+
+    function quickSend(text) {
+      input.value = text;
+      sendMessage();
+    }
+
+    buildGuide();
+    addMsg(t.welcome, 'ai');
+
+    document.getElementById('send').onclick = sendMessage;
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      addMsg(text, 'user');
+      messages.push({ role: 'user', content: text });
+
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
+      messagesDiv.appendChild(typing);
+      scroll();
+
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, lang })
+      });
+      const data = await res.json();
+      typing.remove();
+
+      addMsg(data.reply, 'ai');
+      messages.push({ role: 'assistant', content: data.reply });
+
+      const product = detectProduct(text);
+      if (product) { selectedProduct = product.name; addProductCard(product); }
+
+      // 检测Sophia是否在要求联系方式，若是则显示引导按钮
+      const replyLower = data.reply.toLowerCase();
+      const askingContact = lang === 'zh'
+        ? (data.reply.includes('联系方式') || data.reply.includes('联系我们') || data.reply.includes('微信') || data.reply.includes('手机') || data.reply.includes('留下'))
+        : (replyLower.includes('contact') || replyLower.includes('reach') || replyLower.includes('phone') || replyLower.includes('email') || replyLower.includes('wechat'));
+
+      if (askingContact && !contactFormShown) {
+        const btn = document.createElement('button');
+        btn.className = 'quick-btn';
+        btn.style.alignSelf = 'flex-start';
+        btn.textContent = lang === 'zh' ? '点击留下联系方式 →' : 'Leave my contact info →';
+        btn.onclick = () => { btn.remove(); showContactForm(); };
+        messagesDiv.appendChild(btn);
+        scroll();
+      }
+    }
+  </script>
+</body>
+</html>

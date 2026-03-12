@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>MISIRUI 销售后台</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0ece6; min-height: 100vh; padding: 40px 20px; }
+    h1 { font-size: 22px; color: #1a1a1a; margin-bottom: 8px; }
+    .sub { font-size: 13px; color: #999; margin-bottom: 20px; }
+    .filters { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filter-btn { padding: 7px 18px; border: 1.5px solid #ccc; background: white; border-radius: 20px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .filter-btn.active { border-color: #1a1a1a; background: #1a1a1a; color: white; }
+    .empty { text-align: center; color: #999; padding: 60px; font-size: 14px; }
+    .count { font-size: 13px; color: #666; margin-bottom: 16px; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border-left: 4px solid #eee; transition: border-color 0.2s; }
+    .card[data-status="new"] { border-left-color: #2196f3; }
+    .card[data-status="contacted"] { border-left-color: #ff9800; }
+    .card[data-status="following"] { border-left-color: #9c27b0; }
+    .card[data-status="closed"] { border-left-color: #4caf50; }
+    .card[data-status="lost"] { border-left-color: #ccc; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .name { font-size: 16px; font-weight: bold; color: #1a1a1a; }
+    .meta { display: flex; gap: 8px; align-items: center; }
+    .time { font-size: 12px; color: #999; }
+    .lang-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f0f0f0; color: #666; }
+    .tags { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .tag { padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+    .tag-product { background: #e8f0fe; color: #1a56db; }
+    .tag-scene { background: #fef3c7; color: #92400e; }
+    .contact-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .contact-val { font-size: 15px; color: #1a1a1a; font-weight: bold; }
+    .copy-btn { padding: 4px 12px; border: 1.5px solid #1a1a1a; background: white; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+    .copy-btn:hover { background: #1a1a1a; color: white; }
+    .status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .status-btn { padding: 5px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; border: 1.5px solid transparent; transition: all 0.2s; background: #f5f5f5; color: #555; }
+    .status-btn.active { color: white; }
+    .status-btn[data-s="new"].active { background: #2196f3; border-color: #2196f3; }
+    .status-btn[data-s="contacted"].active { background: #ff9800; border-color: #ff9800; }
+    .status-btn[data-s="following"].active { background: #9c27b0; border-color: #9c27b0; }
+    .status-btn[data-s="closed"].active { background: #4caf50; border-color: #4caf50; }
+    .status-btn[data-s="lost"].active { background: #999; border-color: #999; }
+    .summary-toggle { font-size: 12px; color: #bbb; cursor: pointer; margin-top: 10px; display: inline-block; }
+    .summary-toggle:hover { color: #999; }
+    .summary { display: none; margin-top: 10px; background: #f9f9f9; border-radius: 8px; padding: 12px; font-size: 12px; color: #555; line-height: 1.7; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>MISIRUI 销售线索</h1>
+  <p class="sub">每条记录是一个主动留下联系方式的潜在客户</p>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+    <button class="filter-btn" onclick="setFilter('new', this)">🔵 新线索</button>
+    <button class="filter-btn" onclick="setFilter('contacted', this)">🟠 已联系</button>
+    <button class="filter-btn" onclick="setFilter('following', this)">🟣 跟进中</button>
+    <button class="filter-btn" onclick="setFilter('closed', this)">🟢 已成交</button>
+    <button class="filter-btn" onclick="setFilter('lost', this)">⚫ 已流失</button>
+  </div>
+  <div id="app"></div>
+
+  <script>
+    const STATUS_LABELS = { new: '🔵 新线索', contacted: '🟠 已联系', following: '🟣 跟进中', closed: '🟢 已成交', lost: '⚫ 已流失' };
+    let allLeads = [];
+    let currentFilter = 'all';
+
+    async function load() {
+      const res = await fetch('/leads');
+      allLeads = await res.json();
+      render();
+    }
+
+    function setFilter(f, btn) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      const filtered = currentFilter === 'all' ? allLeads : allLeads.filter(l => (l.status || 'new') === currentFilter);
+      if (filtered.length === 0) { app.innerHTML = '<div class="empty">暂无线索</div>'; return; }
+      app.innerHTML = `<div class="count">显示 ${filtered.length} 条 / 共 ${allLeads.length} 条</div>`;
+      filtered.forEach(lead => {
+        const status = lead.status || 'new';
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.status = status;
+        const statusBtns = Object.keys(STATUS_LABELS).map(s =>
+          `<button class="status-btn ${s === status ? 'active' : ''}" data-s="${s}" onclick="updateStatus(${lead.id}, '${s}', this)">${STATUS_LABELS[s]}</button>`
+        ).join('');
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="name">${lead.name}</div>
+            <div class="meta">
+              <span class="lang-badge">${lead.lang === 'en' ? 'EN' : 'ZH'}</span>
+              <div class="time">${lead.time}</div>
+            </div>
+          </div>
+          <div class="tags">
+            ${lead.product ? `<span class="tag tag-product">产品：${lead.product}</span>` : ''}
+            ${lead.scene ? `<span class="tag tag-scene">场景：${lead.scene}</span>` : ''}
+          </div>
+          <div class="contact-row">
+            <div class="contact-val">${lead.contactType ? lead.contactType + ": " : ""}${lead.contact}</div>
+            <button class="copy-btn" onclick="copy('${lead.contact}', this)">复制</button>
+          </div>
+          <div class="status-row">${statusBtns}</div>
+          <div class="summary-toggle" onclick="toggleSummary(this)">查看完整对话 ▾</div>
+          <div class="summary">${lead.summary || ''}</div>
+        `;
+        app.appendChild(card);
+      });
+    }
+
+    async function updateStatus(id, status, btn) {
+      await fetch('/update-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      const lead = allLeads.find(l => l.id === id);
+      if (lead) lead.status = status;
+      const card = btn.closest('.card');
+      card.dataset.status = status;
+      card.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('active', b.dataset.s === status));
+      if (currentFilter !== 'all' && currentFilter !== status) {
+        card.remove();
+        const visible = document.querySelectorAll('.card').length;
+        const countEl = document.querySelector('.count');
+        if (countEl) countEl.textContent = `显示 ${visible} 条 / 共 ${allLeads.length} 条`;
+      }
+    }
+
+    function copy(text, btn) {
+      navigator.clipboard.writeText(text);
+      btn.textContent = '已复制 ✓';
+      setTimeout(() => btn.textContent = '复制', 2000);
+    }
+
+    function toggleSummary(el) {
+      const summary = el.nextElementSibling;
+      const open = summary.style.display === 'block';
+      summary.style.display = open ? 'none' : 'block';
+      el.textContent = open ? '查看完整对话 ▾' : '收起对话 ▴';
+    }
+
+    load();
+  </script>
+</body>
+</html>
