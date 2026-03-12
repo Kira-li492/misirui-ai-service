@@ -308,16 +308,22 @@
       messagesDiv.appendChild(typing);
       scroll();
 
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, lang })
-      });
-      const data = await res.json();
+      let reply;
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages, lang })
+        });
+        const data = await res.json();
+        reply = data.reply || (lang === 'zh' ? '抱歉，出现了错误，请稍后再试。' : 'Sorry, something went wrong. Please try again.');
+      } catch (e) {
+        reply = lang === 'zh' ? '网络错误，请检查连接后重试。' : 'Network error, please check your connection.';
+      }
       typing.remove();
 
-      addMsg(data.reply, 'ai');
-      messages.push({ role: 'assistant', content: data.reply });
+      addMsg(reply, 'ai');
+      messages.push({ role: 'assistant', content: reply });
 
       const product = detectProduct(text);
       if (product) { selectedProduct = product.name; addProductCard(product); }
