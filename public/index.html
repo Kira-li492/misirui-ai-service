@@ -24,17 +24,18 @@
     .product-card .desc { font-size: 12px; color: #666; line-height: 1.5; }
     .product-card .link { font-size: 12px; color: #1a1a1a; margin-top: 8px; text-decoration: underline; }
     /* 联系方式卡片 */
-    .contact-card { background: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 16px; align-self: flex-start; width: 90%; }
-    .contact-card .form-title { font-size: 13px; font-weight: bold; color: #1a1a1a; margin-bottom: 12px; }
-    .channel-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .channel-btn { padding: 7px 14px; border: 1.5px solid #ddd; background: white; color: #555; border-radius: 20px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .contact-card { background: #fff; border: 2px solid #1a1a1a; border-radius: 16px; padding: 18px; align-self: flex-start; width: 95%; box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
+    .contact-card .form-title { font-size: 13px; font-weight: bold; color: #1a1a1a; margin-bottom: 4px; }
+    .contact-card .form-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+    .channel-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .channel-btn { padding: 7px 13px; border: 1.5px solid #ddd; background: white; color: #555; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
     .channel-btn.selected { border-color: #1a1a1a; background: #1a1a1a; color: white; }
     .channel-btn:hover:not(.selected) { border-color: #999; }
     .contact-input-wrap { display: none; flex-direction: column; gap: 8px; }
     .contact-input-wrap.visible { display: flex; }
-    .contact-card input { width: 100%; padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 13px; outline: none; transition: border 0.2s; }
+    .contact-card input { width: 100%; padding: 10px 14px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 13px; outline: none; transition: border 0.2s; }
     .contact-card input:focus { border-color: #1a1a1a; }
-    .contact-card .submit-btn { padding: 10px; background: #1a1a1a; color: white; border: none; border-radius: 8px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
+    .contact-card .submit-btn { padding: 11px; background: #1a1a1a; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background 0.2s; letter-spacing: 0.5px; }
     .contact-card .submit-btn:hover { background: #333; }
     .success-msg { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 12px; padding: 12px 16px; align-self: flex-start; max-width: 90%; font-size: 13px; color: #2e7d32; line-height: 1.6; }
     #bottom { display: flex; flex-direction: column; border-top: 1px solid #eee; }
@@ -200,6 +201,7 @@
 
       card.innerHTML = `
         <div class="form-title">${t.contactTitle}</div>
+        <div class="form-sub">${lang === 'zh' ? '选择方式后填写，专员会主动联系您' : 'Choose a channel and our team will reach out'}</div>
         <div class="channel-row">
           ${t.contactChannels.map(ch => `<button class="channel-btn" data-ch="${ch}">${ch}</button>`).join('')}
         </div>
@@ -335,20 +337,14 @@
         body: JSON.stringify({ messages, lang })
       }).catch(() => {});
 
-      // 检测Sophia是否在要求联系方式，若是则显示引导按钮
-      const replyLower = data.reply.toLowerCase();
+      // 检测Sophia是否在要求联系方式，若是则直接展示表单
+      const replyLower = reply.toLowerCase();
       const askingContact = lang === 'zh'
-        ? (data.reply.includes('联系方式') || data.reply.includes('联系我们') || data.reply.includes('微信') || data.reply.includes('手机') || data.reply.includes('留下'))
-        : (replyLower.includes('contact') || replyLower.includes('reach') || replyLower.includes('phone') || replyLower.includes('email') || replyLower.includes('wechat'));
+        ? (reply.includes('联系方式') || reply.includes('联系我们') || reply.includes('微信') || reply.includes('手机') || reply.includes('留下') || reply.includes('对接'))
+        : (replyLower.includes('contact') || replyLower.includes('reach') || replyLower.includes('phone') || replyLower.includes('email') || replyLower.includes('wechat') || replyLower.includes('get in touch'));
 
       if (askingContact && !contactFormShown) {
-        const btn = document.createElement('button');
-        btn.className = 'quick-btn';
-        btn.style.alignSelf = 'flex-start';
-        btn.textContent = lang === 'zh' ? '点击留下联系方式 →' : 'Leave my contact info →';
-        btn.onclick = () => { btn.remove(); showContactForm(); };
-        messagesDiv.appendChild(btn);
-        scroll();
+        showContactForm();
       }
     }
   </script>
